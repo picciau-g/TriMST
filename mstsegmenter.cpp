@@ -46,28 +46,27 @@ void MSTsegmenter::loadMesh(){
 void MSTsegmenter::loadStructs(){
 
     clusterIndex = new int[mesh.getTopSimplexesNum()];
-
-    for(int ii=0; ii<mesh.getTopSimplexesNum(); ii++){
-        clusterIndex[ii] = -1;
-        //thresholds[ii] = THR_FORMULA(1, factorK);
-    }
-
-    //Segmentation.reserve(mesh.getTopSimplexesNum());
-
-    for(unsigned int ii=0; ii<mesh.getTopSimplexesNum(); ii++){
-        segRegion SR;
-        SR.internalDifference = THR_FORMULA(1, factorK);
-        SR.members.insert(ii);
-        SR.regionIndex = ii;
-        SR.size = 1;
-        Segmentation.push_back(SR);
-    }
-
     calculateNormals();
     retrieveTriBarycenters();
     setMeshBarycenter();
     setTriangleAreas();
     getBoundingBoxDiagonal();
+
+    for(int ii=0; ii<mesh.getTopSimplexesNum(); ii++){
+        clusterIndex[ii] = -1;
+    }
+
+    for(unsigned int ii=0; ii<mesh.getTopSimplexesNum(); ii++){
+        segRegion SR;
+        SR.regArea = triAreas[ii];
+        double areaRatio = AREA_RATIO(SR.regArea,totMArea);
+        SR.internalDifference = THR_FORMULA(areaRatio, factorK);
+        //cout<<"A "<<areaRatio<<endl;
+        SR.members.insert(ii);
+        SR.regionIndex = ii;
+        SR.size = 1;
+        Segmentation.push_back(SR);
+    }
     cout<<"All set "<<endl;
 }
 
@@ -133,9 +132,12 @@ void MSTsegmenter::setMeshBarycenter(){
 void MSTsegmenter::setTriangleAreas(){
 
     triAreas = new float[mesh.getTopSimplexesNum()];
+    totMArea = 0.0;
 
-    for(int ii=0; ii<mesh.getTopSimplexesNum(); ii++)
+    for(int ii=0; ii<mesh.getTopSimplexesNum(); ii++){
         triAreas[ii] = mesh.TArea(ii);
+        totMArea += triAreas[ii];
+    }
 }
 
 void MSTsegmenter::getBoundingBoxDiagonal(){
@@ -244,7 +246,8 @@ void MSTsegmenter::distanceBuilder(){
             edgekey ek = getEdgeKey((faceind)ii, (faceind)indexAdj);
             if(edgeDistances.count(ek)) //key already inserted, ignore and move on
                 continue;
-            double TDist = (FD[ek] + 150*AD[ek])/BBDiagonal;//triangleDistanceFormula(ii, indexAdj);
+            double TDist = (FD[ek] + alpha*AD[ek])/BBDiagonal;
+            //cout<<"TD "<<TDist<<endl;
             edgeDistances[ek] = TDist;
             edgeWeight ew;
             ew.key = ek;
@@ -261,6 +264,8 @@ void MSTsegmenter::distanceBuilder(){
             ppSorted.push(ew);
         }
     }
+    FD.clear();
+    AD.clear();
 }
 
 double MSTsegmenter::mIntCalculator(int regInd1, int regInd2){
@@ -323,17 +328,17 @@ void MSTsegmenter::mainIteration(int max){
 
         double D1 = Segmentation.at(find1).internalDifference;
         double D2 = Segmentation.at(find2).internalDifference;
+        //cout<<"D1 "<<D1<<" D2 "<<D2<<" w "<<first.w<<endl;
         if(first.w < D1 && first.w < D2){
+            //cout<<"Yes"<<endl;
             mergeRegions(find1, find2, first.w);
             progressive++;
         }
 
     }
+    reorderIndices();
     cout<<"Merging"<<endl;
     postProcessMerge();
-//    for(int ii=0; ii<Segmentation.size(); ii++){
-//        cout<<"Size "<<Segmentation.at(ii).size<<endl;
-//    }
     cout<<"Merged, now reordering"<<endl;
     reorderIndices();
 }
@@ -358,7 +363,6 @@ int MSTsegmenter::lookForTriangle(int tIndex){
 int MSTsegmenter::lookForTri(int tIndex){
 
     int search = tIndex;//Segmentation.at(tIndex).regionIndex;
-    //int rIndex = tIndex;
     int times = 0;
 
     //cout<<search<<" "<<Segmentation.at(search).regionIndex<<endl;
@@ -379,6 +383,7 @@ int MSTsegmenter::lookForTri(int tIndex){
 void MSTsegmenter::mergeRegions(int R1, int R2, double difference){
 
     int winner, other;
+    //cout<<"M"<<endl;
     if(R1 < R2){
         winner=R1;
         other=R2;
@@ -393,9 +398,10 @@ void MSTsegmenter::mergeRegions(int R1, int R2, double difference){
         Segmentation.at(winner).members.insert(*it);
     }
     Segmentation.at(other).regionIndex = Segmentation.at(winner).regionIndex;
-    updateInternalDifference(R1, R2, difference);
     Segmentation.at(winner).size += Segmentation.at(other).size;
     Segmentation.at(other).size = 0;
+    Segmentation.at(winner).regArea += Segmentation.at(other).regArea;
+    updateInternalDifference(R1, R2, difference);
 }
 
 
@@ -407,11 +413,10 @@ void MSTsegmenter::updateInternalDifference(int regInd1, int regInd2, double dif
     else
         lower = regInd2;
 
-    int card = Segmentation[lower].members.size();
-    //cout<<"C "<<card<<endl;
+    double card1 = Segmentation[lower].regArea;
+    double card = AREA_RATIO(card1, totMArea);
 
     double newDiff = difference + THR_FORMULA(card, factorK);
-    //cout<<"Old "<<difference<<" new "<<newDiff<<endl;
 
     Segmentation[regInd1].internalDifference = newDiff;
     Segmentation[regInd2].internalDifference = newDiff;
@@ -439,10 +444,12 @@ void MSTsegmenter::reorderIndices(){
         }
     }
     cout<<"Counted "<<progressive<<endl;
+    nRegs = progressive;
 }
 
 void MSTsegmenter::postProcessMerge(){
 
+    double thresholdMerge = mesh.MArea()/1000.0;
     while (!ppSorted.empty()) {
         edgeWeight ew = ppSorted.top();
         ppSorted.pop();
@@ -454,13 +461,24 @@ void MSTsegmenter::postProcessMerge(){
 
         if(r1==r2)
             continue;
-        //cout<<"S1 "<<Segmentation.at(r1).size<<" S2 "<<Segmentation.at(r2).size<<endl;
-        int thresholdMerge = mesh.getTopSimplexesNum()/1000.0;
-        if(Segmentation.at(r1).size > thresholdMerge && Segmentation.at(r2).size > thresholdMerge)
+        if(Segmentation.at(r1).regArea > thresholdMerge && Segmentation.at(r2).regArea > thresholdMerge)
             continue;
 
         mergeRegions(r1, r2, ew.w);
     }
+}
+
+double MSTsegmenter::regionArea(int R){
+
+    int effectiveIndex = lookForTri(R);
+
+    segRegion reg = Segmentation.at(effectiveIndex);
+    int rArea = 0;
+
+    for(auto it = reg.members.begin(); it != reg.members.end(); ++it){
+        rArea += mesh.TArea(*it);
+    }
+    return rArea;
 }
 
 /**********************************************************************************************************************

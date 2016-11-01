@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 #define THR_FORMULA(cardinality, FK) (FK/cardinality)
+#define AREA_RATIO(Asmall, Abig) (Asmall/Abig)
 
 namespace std { using namespace __gnu_cxx; }
 
@@ -40,7 +41,7 @@ struct compare{
 struct segRegion{
 
     segMembers members;
-    //double size;
+    double regArea;
     double internalDifference;
     int regionIndex;
     int size;
@@ -78,7 +79,19 @@ public:
         this->mainIteration(10);
     }
 
+    inline void setAlpha(double A){
+        this->alpha = A;
+    }
+
     void writeSegmentation(string fileOut);
+    inline void writeNumbers(string fileN){
+
+        FILE* f = fopen(fileN.c_str(), "a");
+
+        fprintf(f, "%d %f --> %d\n", mesh.getTopSimplexesNum(), factorK, nRegs);
+
+        fclose(f);
+    }
 
 private:
     void loadMesh();
@@ -89,7 +102,9 @@ private:
     int *clusterIndex;
     float *triAreas;
     Vertex3D meshBarycenter;
-
+    int nRegs;
+    float totMArea;
+    float alpha;
     //internal differences
     //float *thresholds;
 
@@ -232,6 +247,7 @@ private:
     void updateInternalDifference(int regInd1, int regInd2, double difference);
     void reorderIndices();
     void postProcessMerge();
+    double regionArea(int R);
 };
 
 #endif // MSTSEGMENTER_H
