@@ -1,51 +1,51 @@
 #ifndef MSTSEGMENTER_H
 #define MSTSEGMENTER_H
 
-#include "LibTri/normals.h"
-#include "LibTri/Timer.h"
-#include "LibTri/Reader.h"
+//#include "LibTri/normals.h"
+//#include "LibTri/Timer.h"
+//#include "LibTri/Reader.h"
 
-#include <QString>
-#include <QStringList>
-#include <tr1/unordered_map>
-#include <queue>
-#include <tr1/unordered_set>
-#include <stdio.h>
+//#include <QString>
+//#include <QStringList>
+//#include <tr1/unordered_map>
+//#include <queue>
+//#include <tr1/unordered_set>
+//#include <stdio.h>
+#include "common.h"
 
-#define THR_FORMULA(cardinality, FK) (FK/cardinality)
-#define AREA_RATIO(Asmall, Abig) (Asmall/Abig)
+//#define THR_FORMULA(cardinality, FK) (FK/cardinality)
+//#define AREA_RATIO(Asmall, Abig) (Asmall/Abig)
 
 namespace std { using namespace __gnu_cxx; }
 
 typedef unsigned long long int edgekey;
 typedef unsigned long int faceind;
-typedef std::tr1::unordered_set<int> segMembers;
 
-struct edgeWeight{
+//struct edgeWeight{
 
-    edgekey key;
-    double w;
-    int triangle1;
-    int triangle2;
-};
+//    edgekey key;
+//    double w;
+//    int triangle1;
+//    int triangle2;
+//};
 
-struct compare{
+//struct compare{
 
-    bool operator()(edgeWeight ew1, edgeWeight ew2){
-        return ew1.w > ew2.w;
-    }
-};
+//    bool operator()(edgeWeight ew1, edgeWeight ew2){
+//        return ew1.w > ew2.w;
+//    }
+//};
 
 
-//We need a structure for the regions (members, internal difference)
-struct segRegion{
+////We need a structure for the regions (members, internal difference)
+//struct segRegion{
 
-    segMembers members;
-    double regArea;
-    double internalDifference;
-    int regionIndex;
-    int size;
-};
+//    segMembers members;
+//    double regArea;
+//    double internalDifference;
+//    int regionIndex;
+//    int size;
+//};
 
 
 class MSTsegmenter
@@ -97,7 +97,7 @@ private:
     void loadMesh();
 
     string filename;
-    float factorK; //related to number of merges performed (-->regions)
+    float factorK; //related to number of merges performed
     float BBDiagonal;
     int *clusterIndex;
     float *triAreas;

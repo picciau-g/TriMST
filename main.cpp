@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include "mstsegmenter.h"
+#include "vertexmstsegmenter.h"
 
 using namespace std;
 
@@ -9,6 +10,8 @@ float K = 0.08; //default value
 float alpha = 200;
 string fileOut;
 string fileN;
+string fileField;
+bool triBased;
 
 //Command line instructions
 void print_help(){
@@ -46,6 +49,11 @@ void parseArgs(int argc, char* argv[]){
             fileN = nf.toStdString();
             cout<<"ON "<<fileN.c_str()<<endl;
         }
+        else if(!strcmp(argv[ii], "-VB")){
+            triBased = false;
+            QString nf = argv[ii+1];
+            fileField = nf.toStdString();
+        }
         else if(!strcmp(argv[ii], "-help")){
             print_help();
         }
@@ -58,6 +66,7 @@ void parseArgs(int argc, char* argv[]){
 int main(int argc, char* argv[])
 {
     cout << "Hello TriMST segmenter!" << endl;
+    triBased = true;
 
     if(argc<3){
         cout<<"Not enough input arguments, type ./TriMST -help"<<endl;
@@ -65,7 +74,21 @@ int main(int argc, char* argv[])
     }
 
     parseArgs(argc, argv);
-    cout<<"K "<<K<<endl;
+
+    if(!triBased){
+        VertexMSTSegmenter *VMSTseg = new VertexMSTSegmenter(fileM, K);
+
+        VMSTseg->callLoad();
+        VMSTseg->setAlpha(alpha);
+        VMSTseg->callReadF(fileField);
+        cout<<"Called load"<<endl;
+        VMSTseg->callInit();
+        cout<<"Called init"<<endl;
+        VMSTseg->triggerSegmentation();
+        VMSTseg->callWriteF(fileOut);
+
+        return 0;
+    }
 
     MSTsegmenter *MSTS = new MSTsegmenter(fileM, K);
     MSTS->setAlpha(alpha);

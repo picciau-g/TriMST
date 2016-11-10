@@ -22,7 +22,8 @@ SOURCES += main.cpp \
     LibTri/Reader.cpp \
     LibTri/normals.cpp \
     LibTri/Edge.cpp \
-    mstsegmenter.cpp
+    mstsegmenter.cpp \
+    vertexmstsegmenter.cpp
 
 HEADERS += Vertex3D.h \
     LibTri/Vertex2D.h \
@@ -33,7 +34,9 @@ HEADERS += Vertex3D.h \
     LibTri/normals.h \
     LibTri/Mesh.h \
     LibTri/Edge.h \
-    mstsegmenter.h
+    mstsegmenter.h \
+    vertexmstsegmenter.h \
+    common.h
 
 #include(deployment.pri)
 #qtcAddDeployment()
